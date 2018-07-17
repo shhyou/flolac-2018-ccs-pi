@@ -2,11 +2,12 @@
 
 (provide (all-defined-out))
 
-(require redex/reduction-semantics)
+(require redex/reduction-semantics
+         "utils.rkt")
 
 (define-language CCS
   ;; channels
-  [a b c d e ::=
+  [a b c d e s ::=
      (variable-prefix a) (variable-prefix b) (variable-prefix c) (variable-prefix d)
      (variable-prefix e) (variable-prefix f) (variable-prefix g) (variable-prefix s)
      (variable-prefix t) (variable-prefix q) (variable-prefix r)]
@@ -37,11 +38,53 @@
    (variable-prefix Q) (variable-prefix R) (variable-prefix S) (variable-prefix T)
    (variable-prefix U) (variable-prefix V) (variable-prefix W) (variable-prefix X)
    (variable-prefix Y) (variable-prefix Z)]
-  [P ::= .... (abstract-function u v ...)]
+  [P ::= .... (abstract-function u ...)]
   [E ::=
      hole
      (‖ P ... E Q ...)
      ((ν a) E)])
+
+(define-metafunction CCS+eval
+  fn-var : u -> (a ...)
+  [(fn-var a) (a)]
+  [(fn-var x) ()])
+
+(define-metafunction CCS+eval
+  fv-var : u -> (x ...)
+  [(fv-var a) ()]
+  [(fv-var x) (x)])
+
+(define-metafunction CCS+eval
+  fn : P -> (a ...)
+  [(fn nil) ()]
+  [(fn (‖ P ...))
+   (a_free ... ...)
+   (where/error ((a_free ...) ...) ((fn P) ...))]
+  [(fn ((ν a) P)) (set-remove (fn P) a)]
+  [(fn (! P)) (fn P)]
+  [(fn (u ⇐ v))
+   (a_free ... ...)
+   (where/error ((a_free ...) ...) ((fn-var u) (fn-var u)))]
+  [(fn (u (x) · P)) (fn P)]
+  [(fn (abstract-function u ...))
+   (a_free ... ...)
+   (where/error ((a_free ...) ...) ((fn-var u) ...))])
+
+(define-metafunction CCS+eval
+  fv : P -> (x ...)
+  [(fv nil) ()]
+  [(fv (‖ P ...))
+   (x_free ... ...)
+   (where/error ((x_free ...) ...) ((fv P) ...))]
+  [(fv ((ν a) P)) (fv P)]
+  [(fv (! P)) (fv P)]
+  [(fv (u ⇐ v))
+   (x_free ... ...)
+   (where/error ((x_free ...) ...) ((fv-var u) (fv-var u)))]
+  [(fv (u (x) · P)) (set-subtract (fv P) x)]
+  [(fv (abstract-function u ...))
+   (x_free ... ...)
+   (where/error ((x_free ...) ...) ((fv-var u) ...))])
 
 (define R
   (reduction-relation
@@ -69,6 +112,12 @@
         (in-hole E nil)
         "Res Nil")
 
+   ;; Res Nil combined with other rules -- see Question 1 in the slide
+   (--> (in-hole E ((ν a) P))
+        (in-hole E P)
+        (side-condition (not (member (term a) (term (fn P)))))
+        "Res Nil*")
+
    ;; No need to include this congruence rule
    #;
    (--> (in-hole E ((ν a) ((ν b) P)))
@@ -87,3 +136,56 @@
         (in-hole E (‖ P_1 ... P_2 ... (substitute P x v) P_3 ...))
         "Comm2")
    ))
+
+;; encoding synchronous communication in asynchronous π-calculus
+(define-metafunction CCS+eval
+  send/sync : u ⇐ v · P -> P
+  [(send/sync u ⇐ v · P)
+   ((ν s)
+    (‖ (u ⇐ s)
+       (s (z) ·
+          (‖ (z ⇐ v)
+             P))))
+   (where/error s ,(variable-not-in (term (u v P)) 's))
+   (where/error z ,(variable-not-in (term (u v P)) 'z))])
+
+(define-metafunction CCS+eval
+  recv/sync : u (x) · P -> P
+  [(recv/sync u (x) · P)
+   (u (z) ·
+      ((ν s)
+       (‖ (z ⇐ s)
+          (s (x) · P))))
+   (where/error s ,(variable-not-in (term (u x P)) 's))
+   (where/error z ,(variable-not-in (term (u x P)) 'z))])
+
+(define-metafunction CCS+eval
+  do-send*/sync : u ⇐ v ... · P -> P
+  [(do-send*/sync u ⇐ v · P)
+   (send/sync u ⇐ v · P)]
+  [(do-send*/sync u ⇐ v_1 v_2 ... · P)
+   (send/sync u ⇐ v_1 ·
+              (do-send*/sync u ⇐ v_2 ... · P))])
+
+(define-metafunction CCS+eval
+  send*/sync : u ⇐ v ... · P -> P
+  [(send*/sync u ⇐ v ... · P)
+   ((ν s)
+    (send/sync u ⇐ s ·
+               (do-send*/sync s ⇐ v ... · P)))
+   (where/error s ,(variable-not-in (term (u v ... P)) 's))])
+
+(define-metafunction CCS+eval
+  do-recv*/sync : u (v ...) · P -> P
+  [(do-recv*/sync u (v) · P)
+   (recv/sync u (v) · P)]
+  [(do-recv*/sync u (v_1 v_2 ...) · P)
+   (recv/sync u (v_1) ·
+              (do-recv*/sync u (v_2 ...) · P))])
+
+(define-metafunction CCS+eval
+  recv*/sync : u (v ...) · P -> P
+  [(recv*/sync u (v ...) · P)
+   (recv/sync u (z) ·
+              (do-recv*/sync z (v ...) · P))
+   (where/error z ,(variable-not-in (term (u v ... P)) 'z))])

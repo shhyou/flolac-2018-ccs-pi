@@ -1,10 +1,24 @@
 #lang racket/base
 
-(provide run-many)
+(provide run-many
+         set-remove)
 
 (require racket/match
          racket/pretty
          redex/reduction-semantics)
+
+(define-language lang-empty
+  [x ::= variable-not-otherwise-mentioned])
+
+(define-metafunction lang-empty
+  set-remove : (x ...) x -> (x ...)
+  [(set-remove () x) ()]
+  [(set-remove (x_1 ...) x_2)
+   (x_remain ...)
+   (where/error (x_remain ...)
+                ,(for/list ([x (in-list (term (x_1 ...)))]
+                            #:unless (equal? x (term x_2)))
+                   x))])
 
 (define (run-many fuel R t
                   #:verbose? [verbose? #f]

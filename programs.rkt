@@ -75,3 +75,17 @@
 
 (define secure-client-server-example
   (term (‖ (SClient- 1) (SClient- 2) SServer)))
+
+(define synchronous-communication-example1
+  (term (‖ (send/sync a ⇐ c ·
+                      (Sender1))
+           (send/sync a ⇐ d ·
+                      (Sender2))
+           (recv/sync a (x) ·
+                      (Recv x)))))
+
+(define synchronous-communication-example2
+  (term (‖ (send*/sync a ⇐ c d e f ·
+                      (Sender))
+           (recv*/sync a (x y z w) ·
+                      (Recv x y z w)))))
