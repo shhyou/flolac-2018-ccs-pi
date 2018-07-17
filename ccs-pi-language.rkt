@@ -161,31 +161,25 @@
 
 (define-metafunction CCS+eval
   do-send*/sync : u ⇐ v ... · P -> P
-  [(do-send*/sync u ⇐ v · P)
-   (send/sync u ⇐ v · P)]
-  [(do-send*/sync u ⇐ v_1 v_2 ... · P)
-   (send/sync u ⇐ v_1 ·
-              (do-send*/sync u ⇐ v_2 ... · P))])
+  [(do-send*/sync u ⇐ v · P)           (send/sync u ⇐ v · P)]
+  [(do-send*/sync u ⇐ v_1 v_2 ... · P) (send/sync u ⇐ v_1 ·
+                                                  (do-send*/sync u ⇐ v_2 ... · P))])
+
+(define-metafunction CCS+eval
+  do-recv*/sync : u (v ...) · P -> P
+  [(do-recv*/sync u (v) · P)           (recv/sync u (v) · P)]
+  [(do-recv*/sync u (v_1 v_2 ...) · P) (recv/sync u (v_1) ·
+                                                  (do-recv*/sync u (v_2 ...) · P))])
 
 (define-metafunction CCS+eval
   send*/sync : u ⇐ v ... · P -> P
   [(send*/sync u ⇐ v ... · P)
-   ((ν s)
-    (send/sync u ⇐ s ·
-               (do-send*/sync s ⇐ v ... · P)))
+   ((ν s) (‖ (u ⇐ s)
+             (do-send*/sync s ⇐ v ... · P)))
    (where/error s ,(variable-not-in (term (u v ... P)) 's))])
-
-(define-metafunction CCS+eval
-  do-recv*/sync : u (v ...) · P -> P
-  [(do-recv*/sync u (v) · P)
-   (recv/sync u (v) · P)]
-  [(do-recv*/sync u (v_1 v_2 ...) · P)
-   (recv/sync u (v_1) ·
-              (do-recv*/sync u (v_2 ...) · P))])
 
 (define-metafunction CCS+eval
   recv*/sync : u (v ...) · P -> P
   [(recv*/sync u (v ...) · P)
-   (recv/sync u (z) ·
-              (do-recv*/sync z (v ...) · P))
+   (u (z) · (do-recv*/sync z (v ...) · P))
    (where/error z ,(variable-not-in (term (u v ... P)) 'z))])
