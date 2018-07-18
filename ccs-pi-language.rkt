@@ -142,6 +142,12 @@
    (--> (in-hole E (‖ P_1 ... (a (x ..._arity) P) P_2 ... (a ⇐ v ..._arity) P_3 ...))
         (in-hole E (‖ P_1 ... P_2 ... (substitute* P [x v] ...) P_3 ...))
         "Comm2")
+
+   ;; dead code elimination for branchings
+   (--> (in-hole E_1 (ν (c_prev ... a c_after ...) (in-hole E_2 (a (x ...) P))))
+        (in-hole E_1 (ν (c_prev ... a c_after ...) (in-hole E_2 nil)))
+        (side-condition (not (member (term a) (flatten (term (in-hole E_2 nil))))))
+        "Dead")
    ))
 
 ;; encoding synchronous communication in asynchronous π-calculus
@@ -165,3 +171,39 @@
             (s (x ...) P))))
    (where/error s ,(variable-not-in (term (u x ... P)) 's))
    (where/error z ,(variable-not-in (term (u x ... P)) 'z))])
+
+;; Note: I'm not sure if synchronous communication would be needed here,
+;; that is, whether the send and receive
+;;     (c_label () P)
+;;     (‖ (x_selected ⇐) P)
+;; needs to be replaced by recv/sync and send/sync.
+(define-metafunction CCS+eval
+  ▹ : u (any P) ... -> P
+  [(▹ u [any_label P] ...)
+   (u (z)
+      (ν (c_label ...)
+         (‖ (z ⇐ c_label ...)
+            (c_label () P)
+            ...)))
+   (where/error z ,(variable-not-in (term (u [any_label P] ...)) 'z))
+   (where/error (c_label ...)
+                ,(variables-not-in
+                  (term (u z [any_label P] ...))
+                  (for/list ([label (in-list (term (any_label ...)))])
+                    (format-symbol "c~a" label))))])
+
+(define-metafunction CCS+eval
+  ◃ : u (any ∈ (any ...)) P -> P
+  [(◃ u (any_label-selected ∈ (any_label-all ...)) P)
+   (ν (c)
+      (‖ (u ⇐ c)
+         (c (x_label ...)
+            (‖ (x_selected ⇐)
+               P))))
+   (where/error (x_label ...)
+                ,(variables-not-in
+                  (term (u any_label-selected any_label-all ... P))
+                  (for/list ([label (in-list (term (any_label-all ...)))])
+                    (format-symbol "z~a" label))))
+   (where (_ ... (any_label-selected x_selected) _ ...)
+          ((any_label-all x_label) ...))])

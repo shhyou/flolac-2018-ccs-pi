@@ -89,3 +89,18 @@
                       (Sender))
            (recv/sync a (x y z w)
                       (Recv x y z w)))))
+
+(define branching-example1
+  (term (‖ (! (a (x)
+                 (▹ x
+                    [read (ReadReply x)]
+                    [write (recv/sync x (w) (WriteReply x w))])))
+           (ν (sa)
+              (‖ (a ⇐ sa)
+                 (◃ sa (read ∈ (read write))
+                    (ReadRequest sa))))
+           (ν (sb)
+              (‖ (a ⇐ sb)
+                 (◃ sb (write ∈ (read write))
+                    (send/sync (sb ⇐ c)
+                               (WriteRequest sb))))))))
