@@ -1,7 +1,8 @@
 #lang racket/base
 
 (provide run-many
-         set-remove)
+         set-remove
+         set-subtract)
 
 (require racket/match
          racket/pretty
@@ -19,6 +20,12 @@
                 ,(for/list ([x (in-list (term (x_1 ...)))]
                             #:unless (equal? x (term x_2)))
                    x))])
+
+(define-metafunction lang-empty
+  set-subtract : (x ...) (x ...) -> (x ...)
+  [(set-subtract (x ...) ())             (x ...)]
+  [(set-subtract (x ...) (x_1 x_2 ...))  (set-subtract (set-remove (x ...) x_1)
+                                                       (x_2 ...))])
 
 (define (run-many fuel R t
                   #:verbose? [verbose? #f]

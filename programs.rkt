@@ -32,60 +32,60 @@
 
 ;; Some examples
 (define communication-example
-  (term (‖ (a (x) · (x ⇐ c))
+  (term (‖ (a (x) (x ⇐ c))
            (a ⇐ b))))
 
 (define scope-extrusion-example
-  (term (‖ ((ν b) (a ⇐ b))
-           (a (x) ·
+  (term (‖ (ν (b) (a ⇐ b))
+           (a (x)
               (c ⇐ x)))))
 
 ;; Small agents
 (define-metafunction CCS
   FW : a b -> P
-  [(FW a b) (a (z) · (b ⇐ z))])
+  [(FW a b) (a (z) (b ⇐ z))])
 
 (define-metafunction CCS
   D : a b c -> P
-  [(D a b c) (a (z) ·
+  [(D a b c) (a (z)
                 (‖ (b ⇐ z)
                    (c ⇐ z)))])
 
 (define-metafunction CCS
   K : a -> P
-  [(K a) (a (z) · nil)])
+  [(K a) (a (z) nil)])
 
 (define-metafunction CCS
   NN : a -> P
-  [(NN a) (! (a (x) ·
-                ((ν b) (x ⇐ b))))])
+  [(NN a) (! (a (x)
+                (ν (b) (x ⇐ b))))])
 
 ;; Hacking!
 (define-metafunction CCS+eval
   [(SClient- integer)
-   ((ν c) (‖ (a ⇐ c)
-             (c (x) · (abstract-function c x))))
+   (ν (c) (‖ (a ⇐ c)
+             (c (x) (abstract-function c x))))
    (where/error abstract-function ,(format-symbol "PClient~a" (term integer)))])
 
 (define-term SServer
-  (! (a (z) ·
-        ((ν s)
-         (‖ (z ⇐ s)
-            (PServer z s))))))
+  (! (a (z)
+        (ν (s)
+           (‖ (z ⇐ s)
+              (PServer z s))))))
 
 (define secure-client-server-example
   (term (‖ (SClient- 1) (SClient- 2) SServer)))
 
 (define synchronous-communication-example1
-  (term (‖ (send/sync a ⇐ c ·
+  (term (‖ (send/sync (a ⇐ c)
                       (Sender1))
-           (send/sync a ⇐ d ·
+           (send/sync (a ⇐ d)
                       (Sender2))
-           (recv/sync a (x) ·
+           (recv/sync a (x)
                       (Recv x)))))
 
 (define synchronous-communication-example2
-  (term (‖ (send*/sync a ⇐ c d e f ·
+  (term (‖ (send/sync (a ⇐ c d e f)
                       (Sender))
-           (recv*/sync a (x y z w) ·
+           (recv/sync a (x y z w)
                       (Recv x y z w)))))
